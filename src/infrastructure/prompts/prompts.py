@@ -14,56 +14,7 @@ Your primary goal is to identify all action items from the provided meeting note
 ## CRITICAL INSTRUCTIONS
 1.  **Extract Action Items:** Scan the text for tasks, commitments, and responsibilities assigned to individuals.
 2.  **Identify the Owner and Due Date:** For each action item, identify who is responsible ("owner") and any mentioned deadline ("dueDate"). If not explicitly mentioned, use the string "TBD".
-3.  *****Mandatory Tool Affiliation***:** This is the most crucial step. For every single action item, you MUST associate it with a tool.
-    * **Explicit Mention:** If the notes say "Log this in Jira," use that specific tool.
-    * **Implicit Inference:** If the notes say "Design the new UI mockups," infer an appropriate tool (e.g., "Figma", "Sketch"). If it says "Push the final code," infer "GitHub".
-    * **Communication/General Tasks:** For tasks like "Follow up with marketing," use tools like "Email" or "Slack".
-    * **No Clear Tool:** If the tool cannot be reasonably inferred, use the string "TBD - General Task". Do not leave it blank.
-4.  **Provide Context:** Briefly include any necessary context from the meeting notes that clarifies the action item.
-
-## TOOLS
-The tools you have allows you to:
-- Send message on gmail
-- Create a calendar event
-- Send messages on slack
-- Create jira tickets
-
-## OUTPUT FORMAT
-Generate a single, valid JSON object. The root of the object should have one key, `"action_items"`, which contains an array of action item objects. Each object in the array must have the following keys:
-* `actionDescription`: (string) A clear description of the task.
-* `assignedTo`: (string) The name of the person responsible.
-* `dueDate`: (string) The specified deadline.
-* `context`: (string) Any additional notes or clarifying details.
-
-Ensure the entire output is enclosed in a single JSON code block.
-
-## EXAMPLE
-**--- EXAMPLE INPUT NOTES ---**
-"Okay team, good sync. So, to recap: Alex, you'll draft the Q3 marketing brief. Let's get that done by next Wednesday. Make sure to use the new template in Google Docs. Maria, I need you to create the Jira ticket for the login bug we discussed, P1 priority. And finally, Kenji, please prepare the visuals for the client presentation. They loved the last ones you made in Figma. Let's have those ready for the internal review on Friday."
-**--- EXAMPLE OUTPUT ---**
-```json
-{
-  "action_items": [
-    {
-      "actionDescription": "Draft the Q3 marketing brief",
-      "assignedTo": "Alex",
-      "dueDate": "Next Wednesday",
-      "context": "Must use the new template."
-    },
-    {
-      "actionDescription": "Create a Jira ticket for the login bug",
-      "assignedTo": "Maria",
-      "dueDate": "TBD",
-      "context": "The ticket should be set to P1 priority."
-    },
-    {
-      "actionDescription": "Prepare visuals for client presentation",
-      "assignedTo": "Kenji",
-      "dueDate": "Friday",
-      "context": "For the internal review."
-    }
-  ]
-}
+3.  **Provide Context:** Briefly include any necessary context from the meeting notes that clarifies the action item.
 """
 
 REVIEW_CONTEXT = """
@@ -127,8 +78,20 @@ Now, analyze the following data:
 
 ACTION_ITEMS_PROMPT = PromptTemplate(
     """
+## ROLE
+You are an AI Productivity Assistant. Your expertise lies in analyzing meeting notes and transcripts to extract clear, concise, and actionable tasks for programmatic use.
+
+## OBJECTIVE
+Your primary goal is to identify all action items from the provided meeting notes. For each action item, you must also identify the specific software, application, or tool required to complete it. The final output must be a single, valid JSON object.
+
+## CRITICAL INSTRUCTIONS
+1. **Extract Action Items:** Scan the text for tasks, commitments, and responsibilities assigned to individuals.
+2. **Identify the Owner and Due Date:** For each action item, identify who is responsible ("assignee") and any mentioned deadline ("due_date"). If not explicitly mentioned, use the string "TBD".
+3. **Date Format:** For dates, use ISO format (YYYY-MM-DD) when available, or "TBD" if not specified.
+4. **Provide Context:** Briefly include any necessary context from the meeting notes that clarifies the action item.
+
 ## YOUR TASK
-Now, process the following meeting notes and generate the action items table as instructed.
+Now, process the following meeting notes and generate the action items following the structure defined in the Pydantic model.
 
 **--- MEETING NOTES START ---**
 {meeting_notes}
@@ -150,11 +113,41 @@ Reply only with the new action items text.
 
 REVIEWER_PROMPT = PromptTemplate(
     """
-Review following meeting notes and suggest improvements if needed.
+You are reviewing action items for quality and completeness. You must respond with a JSON object containing your review feedback.
+
+ACTION ITEMS TO REVIEW:
 {action_items}
 
-This action items are based on the following meeting notes:
+ORIGINAL MEETING NOTES:
 {meeting_notes}
+
+Please analyze the action items and determine if they need improvements. Consider:
+1. Are all action items clear and actionable?
+2. Are owners and due dates properly specified?
+3. Are any important action items missing from the meeting notes?
+4. Are the action items properly broken down into manageable tasks?
+
+You must respond with a JSON object in this exact format:
+{{
+  "requires_changes": true or false,
+  "feedback": "Your detailed feedback here explaining what needs to be improved or why no changes are needed"
+}}
+
+Do not include any text before or after the JSON object.
+"""
+)
+
+REFINEMENT_PROMPT = PromptTemplate(
+    """
+Based on the review feedback below, please refine the action items while maintaining the same JSON structure.
+
+CURRENT ACTION ITEMS:
+{action_items}
+
+REVIEW FEEDBACK:
+{review}
+
+Please return the improved action items in the exact same JSON format as the original.
 """
 )
 

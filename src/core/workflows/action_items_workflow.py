@@ -26,7 +26,7 @@ from llama_index.core.workflow import (
     step,
 )
 
-from src.core.workflows.meeting_notes_workflow import MeetingNotesWorkflow
+from src.core.workflows.sub_workflows.meeting_notes_workflow import MeetingNotesWorkflow
 from src.infrastructure.config import get_config
 from src.infrastructure.logging.logging_config import get_logger
 from src.infrastructure.prompts.prompts import (
